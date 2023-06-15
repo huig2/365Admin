@@ -1,0 +1,28 @@
+$mailboxes = Get-Mailbox 
+#$mailboxes = Get-Mailbox -Filter {​​​​name -like "Someone" -or name -like "SomeoneElse"}​​​​
+
+$outputLocation = "C:\temp\RuleExport.csv" # path to CSV which all data will be exported to
+ForEach($mailbox in $mailboxes){​​​​ # loop over every mailbox
+    Write-Host "getting mailbox rules for $($mailbox.Name)"
+    $curMBXRules = Get-InboxRule -Mailbox $mailbox.DistinguishedName # get all of the inbox rules for the current mailbox
+    $curMBXRules | Add-Member "OwnerMailbox" $mailbox.PrimarySmtpAddress # Add a custom property to the output object and fill the property with the current mailboxes address
+
+    If($curMBXRules -ne $Null){​​​​ # check that the mailbox has any rules
+        $outputType = $curMBXRules.GetType() #get the type of output received, array = more than 1 rule AND system.object = more than 1 rule
+        $outputTypeStr = $outputType.BaseType.ToString() #convert the type to a string for comparison usage
+
+        if($outputTypeStr -eq "System.Object"){​​​​ # what to do if the mailbox has only 1 rule
+            Write-Host "Write-host $($mailbox.Name) has 1 rule named $($curMBXRules.Name)"
+            Write-Host  -ForegroundColor Yellow
+            $curMBXRules | Select-Object -Property * | export-csv $outputLocation -Append # export the single mailbox rule
+        }​​​​ElseIf($outputTypeStr -eq "System.Array"){​​​​ # what to do if the mailbox has more than 1 rule
+            ForEach($rule in $curMBXRules){​​​​ #loop over each rule
+                Write-Host $rule.Name -ForegroundColor Yellow
+                $rule | Select-Object -Property * | export-csv $outputLocation -Append
+            }​​​​
+
+        }​​​​
+
+    }​​​​Else{​​​​Write-Host "$($mailbox.Name) has no rules"}​​​​
+    #Write-host "Mailbox $($mailbox.Name) has $($curMBXRules.Count) Rules" -ForegroundColor Yellow
+}​​​​
